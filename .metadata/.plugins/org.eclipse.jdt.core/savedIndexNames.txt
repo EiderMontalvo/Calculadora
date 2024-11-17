@@ -1,0 +1,4 @@
+INDEX VERSION 1.134+C:\Users\anonimo\Documents\SENATI\2do CICLO\java fundamentals\204 IA T2 Sánchez - Calculadora\.metadata\.plugins\org.eclipse.jdt.core
+3838006238.index
+1865797976.index
+469970334.index

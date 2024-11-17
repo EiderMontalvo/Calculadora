@@ -1,0 +1,346 @@
+package ui;
+
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.EventQueue;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridLayout;
+import java.awt.RenderingHints;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
+import javax.swing.border.LineBorder;
+
+public class Calculadora extends JFrame {
+
+    private static final long serialVersionUID = 1L;
+    private JTextField pantallaResultado;
+    private JTextField pantallaHistorial;
+    private String operador;
+    private double operando1, operando2;
+    private boolean esNuevaEntrada;
+
+    public static void main(String[] args) {
+        EventQueue.invokeLater(() -> {
+            try {
+                Calculadora ventana = new Calculadora();
+                ventana.setVisible(true);
+                ventana.pantallaResultado.requestFocusInWindow();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    public Calculadora() {
+        // Configuración de la ventana principal
+        setTitle("Calculadora");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setBounds(100, 100, 400, 600);
+        setLayout(null);
+        setLocationRelativeTo(null);
+        setResizable(false);
+
+        // Establecer el icono de la aplicación
+        setIconImage(new ImageIcon("ui/img/calculadora.png").getImage());
+
+        // Fondo en azul oscuro para la calculadora
+        getContentPane().setBackground(new Color(25, 25, 35));
+
+        // Pantalla para historial de operaciones
+        pantallaHistorial = new JTextField();
+        pantallaHistorial.setBounds(10, 10, 370, 40);
+        pantallaHistorial.setHorizontalAlignment(JTextField.RIGHT);
+        pantallaHistorial.setFont(new Font("Arial", Font.PLAIN, 18));
+        pantallaHistorial.setEditable(false);
+        pantallaHistorial.setBackground(new Color(35, 35, 45));
+        pantallaHistorial.setForeground(Color.LIGHT_GRAY);
+        pantallaHistorial.setBorder(null);
+        add(pantallaHistorial);
+
+        // Pantalla para resultados
+        pantallaResultado = new JTextField("0");
+        pantallaResultado.setBounds(10, 50, 370, 50);
+        pantallaResultado.setHorizontalAlignment(JTextField.RIGHT);
+        pantallaResultado.setFont(new Font("Arial", Font.BOLD, 36));
+        pantallaResultado.setEditable(false);
+        pantallaResultado.setBackground(new Color(35, 35, 45));
+        pantallaResultado.setForeground(Color.WHITE);
+        // Añadir un borde ligeramente opaco
+        pantallaResultado.setBorder(new LineBorder(new Color(100, 100, 100, 150), 2, true));
+        add(pantallaResultado);
+
+        // Captura de teclas para manejar entradas desde el teclado
+        pantallaResultado.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                char tecla = e.getKeyChar();
+                switch (tecla) {
+                    case '0': case '1': case '2': case '3': case '4':
+                    case '5': case '6': case '7': case '8': case '9':
+                        ingresarNumero(String.valueOf(tecla));
+                        break;
+                    case '+':
+                        ingresarOperador("+");
+                        break;
+                    case '-':
+                        ingresarOperador("-");
+                        break;
+                    case '*':
+                        ingresarOperador("×");
+                        break;
+                    case '/':
+                        ingresarOperador("÷");
+                        break;
+                    case '.':
+                        ingresarDecimal();
+                        break;
+                    case '=':
+                    case '\n':
+                        calcularResultado();
+                        break;
+                    case KeyEvent.VK_BACK_SPACE:
+                        borrarUltimoCaracter();
+                        break;
+                    case KeyEvent.VK_ESCAPE:
+                        limpiarTodo();
+                        break;
+                }
+                pantallaResultado.requestFocusInWindow();
+            }
+        });
+
+        // Panel para los botones
+        JPanel panelBotones = new JPanel();
+        panelBotones.setBounds(10, 110, 370, 450);
+        panelBotones.setLayout(new GridLayout(6, 4, 5, 5));
+        panelBotones.setBackground(new Color(25, 25, 35));
+        add(panelBotones);
+
+        // Configuración de los botones
+        String[] botones = {
+                "%", "CE", "C", "←",
+                "1/x", "x²", "√x", "÷",
+                "7", "8", "9", "×",
+                "4", "5", "6", "-",
+                "1", "2", "3", "+",
+                "+/-", "0", ".", "="
+        };
+
+        for (String texto : botones) {
+            BotonRedondeado boton = new BotonRedondeado(texto);
+            boton.setFont(new Font("Arial", Font.BOLD, 20));
+            boton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            boton.setFocusPainted(false);
+
+            // Aplicar color específico para cada tipo de botón
+            if ("0 1 2 3 4 5 6 7 8 9".contains(texto)) { // Color uniforme para todos los números
+                boton.setBackground(new Color(50, 50, 70));
+                boton.setForeground(Color.WHITE);
+            } else if ("=".equals(texto)) {
+                boton.setBackground(new Color(130, 100, 150)); // Color más opaco y menos saturado para el botón "="
+                boton.setForeground(Color.WHITE);
+            } else {
+                boton.setBackground(new Color(60, 70, 85)); // Color para operadores y funciones
+                boton.setForeground(Color.WHITE);
+            }
+
+            boton.addActionListener(new ManejadorBoton());
+            panelBotones.add(boton);
+        }
+
+        operador = "";
+        operando1 = 0;
+        operando2 = 0;
+        esNuevaEntrada = true;
+        pantallaResultado.requestFocusInWindow();
+    }
+
+    // Métodos de la calculadora
+
+    private void ingresarNumero(String numero) {
+        if (esNuevaEntrada) {
+            pantallaResultado.setText(numero);
+            esNuevaEntrada = false;
+        } else {
+            pantallaResultado.setText(pantallaResultado.getText() + numero);
+        }
+        pantallaHistorial.setText(pantallaHistorial.getText() + numero);
+        pantallaResultado.requestFocusInWindow();
+    }
+
+    private void ingresarOperador(String op) {
+        operador = op;
+        operando1 = Double.parseDouble(pantallaResultado.getText());
+        esNuevaEntrada = true;
+        pantallaHistorial.setText(pantallaHistorial.getText() + " " + op + " ");
+        pantallaResultado.requestFocusInWindow();
+    }
+
+    private void ingresarDecimal() {
+        if (!pantallaResultado.getText().contains(".")) {
+            pantallaResultado.setText(pantallaResultado.getText() + ".");
+        }
+        pantallaHistorial.setText(pantallaHistorial.getText() + ".");
+        pantallaResultado.requestFocusInWindow();
+    }
+
+    private void calcularResultado() {
+        operando2 = Double.parseDouble(pantallaResultado.getText());
+        double resultado = 0;
+        switch (operador) {
+            case "+":
+                resultado = operando1 + operando2;
+                break;
+            case "-":
+                resultado = operando1 - operando2;
+                break;
+            case "×":
+                resultado = operando1 * operando2;
+                break;
+            case "÷":
+                if (operando2 != 0) {
+                    resultado = operando1 / operando2;
+                } else {
+                    pantallaResultado.setText("Error");
+                    esNuevaEntrada = true;
+                    pantallaHistorial.setText("Error");
+                    pantallaResultado.requestFocusInWindow();
+                    return;
+                }
+                break;
+            case "%":
+                resultado = operando1 % operando2;
+                break;
+            case "1/x":
+                if (operando1 != 0) {
+                    resultado = 1 / operando1;
+                } else {
+                    pantallaResultado.setText("Error");
+                    esNuevaEntrada = true;
+                    pantallaHistorial.setText("Error");
+                    pantallaResultado.requestFocusInWindow();
+                    return;
+                }
+                break;
+            case "x²":
+                resultado = Math.pow(operando1, 2);
+                break;
+            case "√x":
+                if (operando1 >= 0) {
+                    resultado = Math.sqrt(operando1);
+                } else {
+                    pantallaResultado.setText("Error");
+                    esNuevaEntrada = true;
+                    pantallaHistorial.setText("Error");
+                    pantallaResultado.requestFocusInWindow();
+                    return;
+                }
+                break;
+        }
+        pantallaResultado.setText(String.valueOf(resultado));
+        pantallaHistorial.setText(""); // Limpiar el historial después del cálculo
+        esNuevaEntrada = true;
+        pantallaResultado.requestFocusInWindow();
+    }
+
+    private void limpiarTodo() {
+        pantallaResultado.setText("0");
+        pantallaHistorial.setText("");
+        operador = "";
+        operando1 = 0;
+        operando2 = 0;
+        esNuevaEntrada = true;
+        pantallaResultado.requestFocusInWindow();
+    }
+
+    private void borrarUltimoCaracter() {
+        String texto = pantallaResultado.getText();
+        if (texto.length() > 1) {
+            pantallaResultado.setText(texto.substring(0, texto.length() - 1));
+        } else {
+            pantallaResultado.setText("0");
+            esNuevaEntrada = true;
+        }
+        if (pantallaHistorial.getText().length() > 0) {
+            pantallaHistorial.setText(pantallaHistorial.getText().substring(0, pantallaHistorial.getText().length() - 1));
+        }
+        pantallaResultado.requestFocusInWindow();
+    }
+
+    private class ManejadorBoton implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            String comando = e.getActionCommand();
+            switch (comando) {
+                case "C":
+                    limpiarTodo();
+                    break;
+                case "CE":
+                    pantallaResultado.setText("0");
+                    esNuevaEntrada = true;
+                    pantallaHistorial.setText("");
+                    break;
+                case "←":
+                    borrarUltimoCaracter();
+                    break;
+                case "+":
+                case "-":
+                case "×":
+                case "÷":
+                case "%":
+                case "1/x":
+                case "x²":
+                case "√x":
+                    ingresarOperador(comando);
+                    break;
+                case "=":
+                    calcularResultado();
+                    break;
+                case ".":
+                    ingresarDecimal();
+                    break;
+                case "+/-":
+                    pantallaResultado.setText(String.valueOf(-Double.parseDouble(pantallaResultado.getText())));
+                    pantallaHistorial.setText(pantallaHistorial.getText() + " +/-");
+                    break;
+                default:
+                    ingresarNumero(comando);
+                    break;
+            }
+            pantallaResultado.requestFocusInWindow();
+        }
+    }
+
+    private class BotonRedondeado extends JButton {
+        public BotonRedondeado(String texto) {
+            super(texto);
+            setOpaque(false);
+            setContentAreaFilled(false);
+            setBorderPainted(false);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(getBackground());
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
+            super.paintComponent(g);
+            g2.dispose();
+        }
+
+        @Override
+        public void setContentAreaFilled(boolean b) {
+            // Evita el llenado predeterminado para mantener el redondeo
+        }
+    }
+}
